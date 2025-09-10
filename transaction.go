@@ -65,12 +65,11 @@ func (f *FileTransactionLogger) Err() <-chan error {
 }
 
 func (f *FileTransactionLogger) Close() error {
-	f.Wait()
-
 	if f.events != nil {
 		close(f.events)
 		f.events = nil
 	}
+	f.Wait()
 
 	return f.file.Close()
 }
@@ -86,9 +85,8 @@ func (f *FileTransactionLogger) Run() {
 	errors := make(chan error, 1)
 	f.errors = errors
 
-	f.wg.Add(1)
 	go func() {
-		defer f.wg.Done()
+		defer f.wg.Done() // do for each event from WriteDelete/WritePut
 
 		for event := range events {
 			f.lastSequence++
@@ -102,8 +100,6 @@ func (f *FileTransactionLogger) Run() {
 				f.errors <- err
 				return
 			}
-
-			f.wg.Done() // do for each event from WriteDelete/WritePut
 		}
 	}()
 }
@@ -113,12 +109,10 @@ func (f *FileTransactionLogger) ReadEvents() (<-chan Event, <-chan error) {
 	outEvent := make(chan Event)
 	outError := make(chan error, 1)
 
-	f.wg.Add(1)
 	go func() {
 		defer func() {
 			close(outError)
 			close(outEvent)
-			f.wg.Done()
 		}()
 
 		var event Event
