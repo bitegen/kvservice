@@ -1,6 +1,8 @@
 package core
 
 import (
+	"cloud/transaction"
+	"context"
 	"errors"
 	"sync"
 )
@@ -11,12 +13,16 @@ var (
 )
 
 type Store struct {
-	m map[string]string
+	m          map[string]string
+	transactor transaction.Transactor
 	sync.RWMutex
 }
 
-func NewStore() *Store {
-	return &Store{m: make(map[string]string)}
+func NewStore(transactor transaction.Transactor) *Store {
+	return &Store{
+		m:          make(map[string]string),
+		transactor: transactor,
+	}
 }
 
 // helper to check if key is empty
@@ -36,6 +42,7 @@ func (s *Store) Put(key string, value string) error {
 	defer s.Unlock()
 
 	s.m[key] = value
+	s.transactor.WritePut(context.TODO(), key, value)
 	return nil
 }
 
@@ -48,6 +55,7 @@ func (s *Store) Delete(key string) error {
 	defer s.Unlock()
 
 	delete(s.m, key)
+	s.transactor.WriteDelete(context.TODO(), key)
 	return nil
 }
 

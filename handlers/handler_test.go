@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"cloud/core"
+	"cloud/mocks"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,7 +12,7 @@ import (
 )
 
 func TestHelloGoHandler(t *testing.T) {
-	store := core.NewStore()
+	store := core.NewStore(&mocks.MockTransactor{})
 	handler := NewHandler(store)
 
 	req, err := http.NewRequest("GET", "/", nil)
@@ -33,7 +34,7 @@ func TestHelloGoHandler(t *testing.T) {
 }
 
 func TestPutHandler(t *testing.T) {
-	store := core.NewStore()
+	store := core.NewStore(&mocks.MockTransactor{})
 	handler := NewHandler(store)
 
 	key := "key1"
@@ -59,7 +60,7 @@ func TestPutHandler(t *testing.T) {
 }
 
 func TestGetHandler(t *testing.T) {
-	store := core.NewStore()
+	store := core.NewStore(&mocks.MockTransactor{})
 	handler := NewHandler(store)
 
 	key := "key1"

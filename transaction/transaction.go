@@ -11,7 +11,14 @@ import (
 
 const filename = "kv_data"
 
-type Transactor struct {
+type Transactor interface {
+	WritePut(ctx context.Context, key, value string) error
+	WriteDelete(ctx context.Context, key string) error
+
+	Close() error
+}
+
+type FileTransactor struct {
 	events       chan Event
 	errors       chan error
 	done         chan struct{}
@@ -20,13 +27,13 @@ type Transactor struct {
 	file         *os.File
 }
 
-func NewTransactor(ctx context.Context, filename string) (*Transactor, error) {
+func NewFileTransactor(ctx context.Context, filename string) (*FileTransactor, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0755)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open transaction log file: %w", err)
 	}
 
-	t := &Transactor{
+	t := &FileTransactor{
 		events: make(chan Event, 128),
 		errors: make(chan error),
 		done:   make(chan struct{}),
@@ -37,7 +44,7 @@ func NewTransactor(ctx context.Context, filename string) (*Transactor, error) {
 	return t, nil
 }
 
-func (t *Transactor) Close() error {
+func (t *FileTransactor) Close() error {
 	if !atomic.CompareAndSwapUint32(&t.closed, 0, 1) {
 		return nil
 	}
@@ -49,17 +56,17 @@ func (t *Transactor) Close() error {
 	return t.file.Close()
 }
 
-func (t *Transactor) WritePut(ctx context.Context, key, value string) error {
+func (t *FileTransactor) WritePut(ctx context.Context, key, value string) error {
 	return t.send(ctx, Event{Key: key, Value: value, EventType: EventPut})
 }
 
-func (t *Transactor) WriteDelete(ctx context.Context, key string) error {
+func (t *FileTransactor) WriteDelete(ctx context.Context, key string) error {
 	return t.send(ctx, Event{Key: key, Value: "", EventType: EventDelete})
 }
 
-func (t *Transactor) send(ctx context.Context, event Event) error {
+func (t *FileTransactor) send(ctx context.Context, event Event) error {
 	if atomic.LoadUint32(&t.closed) == 1 {
-		return fmt.Errorf("transactor is closed")
+		return fmt.Errorf("FileTransactor is closed")
 	}
 
 	select {
@@ -70,7 +77,7 @@ func (t *Transactor) send(ctx context.Context, event Event) error {
 	}
 }
 
-func (t *Transactor) run(ctx context.Context) {
+func (t *FileTransactor) run(ctx context.Context) {
 	go func() {
 		for {
 			select {
@@ -94,7 +101,7 @@ func (t *Transactor) run(ctx context.Context) {
 	}()
 }
 
-func (t *Transactor) readEvents() (chan Event, chan error) {
+func (t *FileTransactor) readEvents() (chan Event, chan error) {
 	scanner := bufio.NewScanner(t.file)
 	outEvent := make(chan Event)
 	outError := make(chan error, 1)

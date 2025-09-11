@@ -1,11 +1,12 @@
 package core
 
 import (
+	"cloud/mocks"
 	"errors"
 	"testing"
 )
 
-var store = NewStore()
+var store = NewStore(&mocks.MockTransactor{})
 
 func TestPut(t *testing.T) {
 	const key = "create-key-put"

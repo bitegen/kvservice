@@ -21,7 +21,7 @@ func TestCreateTransactor(t *testing.T) {
 	defer os.Remove(filename)
 
 	ctx := context.Background()
-	tr, err := NewTransactor(ctx, filename)
+	tr, err := NewFileTransactor(ctx, filename)
 	if err != nil {
 		t.Fatalf("cannot create transactor: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestCreateTransactor(t *testing.T) {
 func TestConcurrentWritesAndRead(t *testing.T) {
 	ctx := context.Background()
 
-	transactor, err := NewTransactor(ctx, filename)
+	transactor, err := NewFileTransactor(ctx, filename)
 	if err != nil {
 		t.Fatalf("failed to create transactor: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestConcurrentWritesAndRead(t *testing.T) {
 	}
 	wg.Wait()
 
-	transactor1, err := NewTransactor(ctx, filename)
+	transactor1, err := NewFileTransactor(ctx, filename)
 	if err != nil {
 		t.Fatalf("failed to create transactor1: %v", err)
 	}
