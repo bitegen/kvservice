@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -91,5 +92,47 @@ func TestConcurrentWritesAndRead(t *testing.T) {
 	}
 	if len(readEvents) != workers {
 		t.Fatalf("expected %d rows, got %d", workers, len(readEvents))
+	}
+}
+
+func TestSendClosedTransactor(t *testing.T) {
+	const filename = "test_kv"
+	defer os.Remove(filename)
+
+	ctx := context.Background()
+	tr, err := NewFileTransactor(ctx, filename)
+	if err != nil {
+		t.Fatalf("cannot create transactor: %v", err)
+	}
+	tr.Close()
+
+	const key = "key"
+	const value = "value"
+
+	if err := tr.WritePut(ctx, key, value); !errors.Is(err, ErrTransactorClosed) {
+		t.Fatal("transactor is not closed")
+	}
+
+	if err := tr.WriteDelete(ctx, key); !errors.Is(err, ErrTransactorClosed) {
+		t.Fatal("transactor is not closed")
+	}
+}
+
+func TestClosedTransactor(t *testing.T) {
+	const filename = "test_kv"
+	defer os.Remove(filename)
+
+	ctx := context.Background()
+	tr, err := NewFileTransactor(ctx, filename)
+	if err != nil {
+		t.Fatalf("cannot create transactor: %v", err)
+	}
+
+	if err := tr.Close(); err != nil {
+		t.Fatalf("close failed: %v", err)
+	}
+
+	if err := tr.Close(); err != ErrTransactorClosed {
+		t.Fatalf("got: %v, but expected: %v", err, ErrTransactorClosed)
 	}
 }

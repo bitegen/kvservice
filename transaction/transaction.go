@@ -3,20 +3,19 @@ package transaction
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"sync/atomic"
 )
 
-const filename = "kv_data"
+const filename = "transactor.journal"
 
-type Transactor interface {
-	WritePut(ctx context.Context, key, value string) error
-	WriteDelete(ctx context.Context, key string) error
-
-	Close() error
-}
+var (
+	ErrTransactorClosed = errors.New("file transactor is closed")
+	ErrOutOfSequence    = errors.New("transaction numbers out of sequence")
+)
 
 type FileTransactor struct {
 	events       chan Event
@@ -46,7 +45,7 @@ func NewFileTransactor(ctx context.Context, filename string) (*FileTransactor, e
 
 func (t *FileTransactor) Close() error {
 	if !atomic.CompareAndSwapUint32(&t.closed, 0, 1) {
-		return nil
+		return ErrTransactorClosed
 	}
 	close(t.done)
 
@@ -66,7 +65,7 @@ func (t *FileTransactor) WriteDelete(ctx context.Context, key string) error {
 
 func (t *FileTransactor) send(ctx context.Context, event Event) error {
 	if atomic.LoadUint32(&t.closed) == 1 {
-		return fmt.Errorf("FileTransactor is closed")
+		return ErrTransactorClosed
 	}
 
 	select {
@@ -120,13 +119,13 @@ func (t *FileTransactor) readEvents() (chan Event, chan error) {
 				&e.Sequence, &e.EventType, &e.Key, &e.Value)
 
 			if t.lastSequence >= e.Sequence {
-				outError <- fmt.Errorf("transaction numbers out of sequence")
+				outError <- ErrOutOfSequence
 				return
 			}
 
 			uv, err := url.QueryUnescape(e.Value)
 			if err != nil {
-				outError <- fmt.Errorf("value decoding failure: %w", err)
+				outError <- fmt.Errorf("value decoding fail: %w", err)
 				return
 			}
 
@@ -137,7 +136,7 @@ func (t *FileTransactor) readEvents() (chan Event, chan error) {
 		}
 
 		if err := scanner.Err(); err != nil {
-			outError <- fmt.Errorf("transaction log read failure: %w", err)
+			outError <- fmt.Errorf("transaction log read fail: %w", err)
 		}
 	}()
 

@@ -74,6 +74,6 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte(value))
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(value))
 }
