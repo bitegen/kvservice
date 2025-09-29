@@ -37,6 +37,9 @@ func TestCreateTransactor(t *testing.T) {
 }
 
 func TestConcurrentWritesAndRead(t *testing.T) {
+	const filename = "test_kv"
+	defer os.Remove(filename)
+
 	ctx := context.Background()
 
 	transactor, err := NewFileTransactor(ctx, filename)
