@@ -18,15 +18,17 @@ func fileExists(filename string) bool {
 }
 
 func TestCreateTransactor(t *testing.T) {
-	const filename = "test_kv"
-	defer os.Remove(filename)
-
 	ctx := context.Background()
-	tr, err := NewFileTransactor(ctx, filename)
+	tr, err := NewFileTransactor(ctx)
 	if err != nil {
 		t.Fatalf("cannot create transactor: %v", err)
 	}
-	defer tr.Close()
+	defer func() {
+		tr.Close()
+		if tr.file != nil {
+			os.Remove(tr.file.Name())
+		}
+	}()
 
 	if tr == nil {
 		t.Fatal("transactor is nil")
@@ -37,12 +39,9 @@ func TestCreateTransactor(t *testing.T) {
 }
 
 func TestConcurrentWritesAndRead(t *testing.T) {
-	const filename = "test_kv"
-	defer os.Remove(filename)
-
 	ctx := context.Background()
 
-	transactor, err := NewFileTransactor(ctx, filename)
+	transactor, err := NewFileTransactor(ctx)
 	if err != nil {
 		t.Fatalf("failed to create transactor: %v", err)
 	}
@@ -51,7 +50,9 @@ func TestConcurrentWritesAndRead(t *testing.T) {
 		if err := transactor.Close(); err != nil {
 			t.Fatalf("close error: %v", err)
 		}
-		os.Remove(transactor.file.Name())
+		if transactor.file != nil {
+			os.Remove(transactor.file.Name())
+		}
 	}()
 
 	wg := &sync.WaitGroup{}
@@ -72,7 +73,7 @@ func TestConcurrentWritesAndRead(t *testing.T) {
 	}
 	wg.Wait()
 
-	transactor1, err := NewFileTransactor(ctx, filename)
+	transactor1, err := NewFileTransactor(ctx)
 	if err != nil {
 		t.Fatalf("failed to create transactor1: %v", err)
 	}
@@ -81,11 +82,13 @@ func TestConcurrentWritesAndRead(t *testing.T) {
 		if err := transactor1.Close(); err != nil {
 			t.Fatalf("close error: %v", err)
 		}
-		os.Remove(transactor.file.Name())
+		if transactor.file != nil {
+			os.Remove(transactor.file.Name())
+		}
 	}()
 
 	var readEvents []Event
-	eventsCh, errCh := transactor1.readEvents()
+	eventsCh, errCh := transactor1.ReadEvents()
 	for event := range eventsCh {
 		readEvents = append(readEvents, event)
 	}
@@ -99,15 +102,18 @@ func TestConcurrentWritesAndRead(t *testing.T) {
 }
 
 func TestSendClosedTransactor(t *testing.T) {
-	const filename = "test_kv"
-	defer os.Remove(filename)
-
 	ctx := context.Background()
-	tr, err := NewFileTransactor(ctx, filename)
+	tr, err := NewFileTransactor(ctx)
 	if err != nil {
 		t.Fatalf("cannot create transactor: %v", err)
 	}
 	tr.Close()
+
+	defer func() {
+		if tr.file != nil {
+			os.Remove(tr.file.Name())
+		}
+	}()
 
 	const key = "key"
 	const value = "value"
@@ -122,14 +128,16 @@ func TestSendClosedTransactor(t *testing.T) {
 }
 
 func TestClosedTransactor(t *testing.T) {
-	const filename = "test_kv"
-	defer os.Remove(filename)
-
 	ctx := context.Background()
-	tr, err := NewFileTransactor(ctx, filename)
+	tr, err := NewFileTransactor(ctx)
 	if err != nil {
 		t.Fatalf("cannot create transactor: %v", err)
 	}
+	defer func() {
+		if tr.file != nil {
+			os.Remove(tr.file.Name())
+		}
+	}()
 
 	if err := tr.Close(); err != nil {
 		t.Fatalf("close failed: %v", err)

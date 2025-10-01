@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-var store = NewStore(&mocks.MockTransactor{})
-
 func TestPut(t *testing.T) {
+	var store = NewStore(&mocks.MockTransactor{})
+
 	const key = "create-key-put"
 	const value = "create-value-put"
 
@@ -59,6 +59,8 @@ func TestPut(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
+	var store = NewStore(&mocks.MockTransactor{})
+
 	const key = "create-key-get"
 	const value = "create-value-get"
 
@@ -95,6 +97,8 @@ func TestGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	var store = NewStore(&mocks.MockTransactor{})
+
 	const key = "create-key-delete"
 	const value = "create-value-delete"
 

@@ -11,12 +11,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const filename = "kv_store"
-
 func main() {
 	ctx := context.Background()
 
-	transactor, err := transaction.NewFileTransactor(ctx, filename)
+	transactor, err := transaction.NewFileTransactor(ctx)
 	if err != nil {
 		log.Fatalf("failed to create transaction logger: %s", err)
 	}
@@ -31,5 +29,6 @@ func main() {
 	r.HandleFunc("/v1/{key}", handler.GetHandler).Methods("GET")
 	r.HandleFunc("/v1/{key}", handler.DeleteHandler).Methods("DELETE")
 
+	log.Println("server is starting...")
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

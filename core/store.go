@@ -4,6 +4,8 @@ import (
 	"cloud/transaction"
 	"context"
 	"errors"
+	"fmt"
+	"log"
 	"sync"
 )
 
@@ -19,10 +21,16 @@ type Store struct {
 }
 
 func NewStore(transactor transaction.Transactor) *Store {
-	return &Store{
+	st := &Store{
 		m:          make(map[string]string),
 		transactor: transactor,
 	}
+
+	if err := st.restoreState(); err != nil {
+		log.Fatal(err)
+	}
+
+	return st
 }
 
 // helper to check if key is empty
@@ -38,11 +46,13 @@ func (s *Store) Put(key string, value string) error {
 		return err
 	}
 
-	s.Lock()
-	defer s.Unlock()
+	s.put(key, value) // add pair in lock
 
-	s.m[key] = value
-	s.transactor.WritePut(context.TODO(), key, value)
+	err := s.transactor.WritePut(context.TODO(), key, value)
+	if err != nil {
+		s.delete(key)
+		return fmt.Errorf("failed to log put operation: %w", err)
+	}
 	return nil
 }
 
@@ -51,11 +61,13 @@ func (s *Store) Delete(key string) error {
 		return err
 	}
 
-	s.Lock()
-	defer s.Unlock()
+	s.delete(key) // delete pair in lock
 
-	delete(s.m, key)
-	s.transactor.WriteDelete(context.TODO(), key)
+	err := s.transactor.WriteDelete(context.TODO(), key)
+	if err != nil {
+		s.delete(key)
+		return fmt.Errorf("failed to log delete operation: %w", err)
+	}
 	return nil
 }
 
@@ -72,4 +84,43 @@ func (s *Store) Get(key string) (string, error) {
 		return "", ErrKeyNotFound
 	}
 	return value, nil
+}
+
+// put data in lock
+func (s *Store) put(key string, value string) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.m[key] = value
+}
+
+// delete data in lock
+func (s *Store) delete(key string) {
+	s.Lock()
+	defer s.Unlock()
+
+	delete(s.m, key)
+}
+
+func (s *Store) restoreState() error {
+	eventsCh, errCh := s.transactor.ReadEvents()
+	if eventsCh == nil || errCh == nil {
+		return nil
+	}
+
+	for event := range eventsCh {
+		switch event.EventType {
+		case transaction.EventDelete:
+			s.delete(event.Key)
+		case transaction.EventPut:
+			s.put(event.Key, event.Value)
+		default:
+			return errors.New("unknown event to restore")
+		}
+	}
+
+	if err := <-errCh; err != nil {
+		return err
+	}
+	return nil
 }

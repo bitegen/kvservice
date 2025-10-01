@@ -10,11 +10,14 @@ import (
 	"sync/atomic"
 )
 
-const filename = "transactor.journal"
+const (
+	filename = "transactor.journal"
+)
 
 var (
 	ErrTransactorClosed = errors.New("file transactor is closed")
 	ErrOutOfSequence    = errors.New("transaction numbers out of sequence")
+	ErrEmptyJournal     = errors.New("empty journal")
 )
 
 type FileTransactor struct {
@@ -26,7 +29,7 @@ type FileTransactor struct {
 	file         *os.File
 }
 
-func NewFileTransactor(ctx context.Context, filename string) (*FileTransactor, error) {
+func NewFileTransactor(ctx context.Context) (*FileTransactor, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0755)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open transaction log file: %w", err)
@@ -73,6 +76,8 @@ func (t *FileTransactor) send(ctx context.Context, event Event) error {
 		return ctx.Err()
 	case t.events <- event:
 		return nil
+	default:
+		return nil
 	}
 }
 
@@ -100,7 +105,7 @@ func (t *FileTransactor) run(ctx context.Context) {
 	}()
 }
 
-func (t *FileTransactor) readEvents() (chan Event, chan error) {
+func (t *FileTransactor) ReadEvents() (<-chan Event, <-chan error) {
 	scanner := bufio.NewScanner(t.file)
 	outEvent := make(chan Event)
 	outError := make(chan error, 1)
@@ -111,6 +116,11 @@ func (t *FileTransactor) readEvents() (chan Event, chan error) {
 		defer close(outEvent)
 		defer close(outError)
 
+		if t.file == nil {
+			outError <- ErrEmptyJournal
+			return
+		}
+
 		for scanner.Scan() {
 			line := scanner.Text()
 
@@ -119,13 +129,13 @@ func (t *FileTransactor) readEvents() (chan Event, chan error) {
 				&e.Sequence, &e.EventType, &e.Key, &e.Value)
 
 			if t.lastSequence >= e.Sequence {
-				outError <- ErrOutOfSequence
+				outError <- fmt.Errorf("transaction numbers out of sequence")
 				return
 			}
 
 			uv, err := url.QueryUnescape(e.Value)
 			if err != nil {
-				outError <- fmt.Errorf("value decoding fail: %w", err)
+				outError <- fmt.Errorf("value decoding failure: %w", err)
 				return
 			}
 
@@ -136,7 +146,7 @@ func (t *FileTransactor) readEvents() (chan Event, chan error) {
 		}
 
 		if err := scanner.Err(); err != nil {
-			outError <- fmt.Errorf("transaction log read fail: %w", err)
+			outError <- fmt.Errorf("transaction log read failure: %w", err)
 		}
 	}()
 
