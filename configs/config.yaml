@@ -1,0 +1,10 @@
+postgres:
+  pool:
+    max_conns: 8
+    max_conn_lifetime: 1h
+    connect_timeout: 5s
+
+http:
+  read_timeout: 10s
+  write_timeout: 10s
+  idle_timeout: 60s

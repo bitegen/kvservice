@@ -3,21 +3,10 @@ package transaction
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"sync/atomic"
-)
-
-const (
-	filename = "transactor.journal"
-)
-
-var (
-	ErrTransactorClosed = errors.New("file transactor is closed")
-	ErrOutOfSequence    = errors.New("transaction numbers out of sequence")
-	ErrEmptyJournal     = errors.New("empty journal")
 )
 
 type FileTransactor struct {

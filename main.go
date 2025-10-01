@@ -1,20 +1,32 @@
 package main
 
 import (
+	"cloud/config"
 	"cloud/core"
 	"cloud/handlers"
 	"cloud/transaction"
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 )
 
-func main() {
-	ctx := context.Background()
+const yamlPath = "./configs/config.yaml"
+const envPath = "./.env"
 
-	transactor, err := transaction.NewFileTransactor(ctx)
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cfg, err := config.LoadConfig(envPath, yamlPath)
+	if err != nil {
+		log.Fatalf("failed to get config: %v", err)
+	}
+	log.Println(cfg)
+
+	transactor, err := transaction.NewPostgresTransactor(ctx, cfg.Postgres)
 	if err != nil {
 		log.Fatalf("failed to create transaction logger: %s", err)
 	}
