@@ -1,4 +1,5 @@
 postgres:
+  migrations_dir: "./migrations"
   pool:
     max_conns: 8
     max_conn_lifetime: 1h

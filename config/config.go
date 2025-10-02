@@ -21,8 +21,13 @@ type Config struct {
 }
 
 type PostgresConfig struct {
-	Host, Port, DbName, User, Password string
-	Pool                               PoolConfig
+	Host          string
+	Port          string
+	DbName        string
+	User          string
+	Password      string
+	Pool          PoolConfig
+	MigrationsDir string `yaml:"migrations_dir"`
 }
 
 type PoolConfig struct {
@@ -90,26 +95,21 @@ func loadEnv(envPath string) (PostgresConfig, error) {
 	}, nil
 }
 
-func loadYAML(yamlPath string) (PoolConfig, ServerConfig, error) {
+func loadYAML(yamlPath string) (PostgresConfig, ServerConfig, error) {
 	if yamlPath == "" {
 		yamlPath = defaultYAMLPath
 	}
 	f, err := os.Open(yamlPath)
 	if err != nil {
-		return PoolConfig{}, ServerConfig{}, fmt.Errorf("open yaml: %w", err)
+		return PostgresConfig{}, ServerConfig{}, fmt.Errorf("open yaml: %w", err)
 	}
 	defer f.Close()
 
-	var raw struct {
-		Postgres struct {
-			Pool PoolConfig `yaml:"pool"`
-		} `yaml:"postgres"`
-		HTTP ServerConfig `yaml:"http"`
-	}
+	var raw Config
 	if err := yaml.NewDecoder(f).Decode(&raw); err != nil {
-		return PoolConfig{}, ServerConfig{}, fmt.Errorf("decode yaml: %w", err)
+		return PostgresConfig{}, ServerConfig{}, fmt.Errorf("decode yaml: %w", err)
 	}
-	return raw.Postgres.Pool, raw.HTTP, nil
+	return raw.Postgres, raw.HTTP, nil
 }
 
 func LoadConfig(envPath, yamlPath string) (Config, error) {
@@ -117,10 +117,12 @@ func LoadConfig(envPath, yamlPath string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	pool, httpCfg, err := loadYAML(yamlPath)
+	postgresCfg, httpCfg, err := loadYAML(yamlPath)
 	if err != nil {
 		return Config{}, err
 	}
-	pg.Pool = pool
+	pg.Pool = postgresCfg.Pool
+	pg.MigrationsDir = postgresCfg.MigrationsDir
+
 	return Config{Postgres: pg, HTTP: httpCfg}, nil
 }

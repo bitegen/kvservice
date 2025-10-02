@@ -6,24 +6,16 @@ import (
 )
 
 func MakeDSN(cfg config.PostgresConfig) string {
-	if cfg.Pool.MaxConns <= 0 {
-		return fmt.Sprintf(
-			"postgres://%s:%s@%s:%s/%s",
-			cfg.User,
-			cfg.Password,
-			cfg.Host,
-			cfg.Port,
-			cfg.DbName,
-		)
-	}
-
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?pool_max_conns=%d",
+	base := fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s",
 		cfg.User,
 		cfg.Password,
 		cfg.Host,
 		cfg.Port,
 		cfg.DbName,
-		cfg.Pool.MaxConns,
 	)
+
+	sslParam := "sslmode=disable"
+
+	return fmt.Sprintf("%s?%s", base, sslParam)
 }

@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"cloud/config"
+	"cloud/migrator"
 	"cloud/utils"
 	"context"
 	"fmt"
@@ -30,6 +31,10 @@ func NewPostgresTransactor(ctx context.Context, cfg config.PostgresConfig) (*Pos
 	pool, err := pgxpool.NewWithConfig(ctx, psqlConfig)
 	if err != nil {
 		return nil, fmt.Errorf("connect to db: %w", err)
+	}
+
+	if err := migrator.RunMigrations(cfg, cfg.MigrationsDir); err != nil {
+		return nil, fmt.Errorf("cannot run migrations: %w", err)
 	}
 
 	t := &PostgresTransactor{
@@ -71,33 +76,13 @@ func (t *PostgresTransactor) send(ctx context.Context, event Event) error {
 	case t.events <- event:
 		return nil
 	case <-t.done:
-		return nil
+		return ErrTransactorClosed
 	}
 }
 
-// func (t *PostgresTransactor) run(ctx context.Context) {
-// 	go func() {
-// 		for {
-// 			select {
-// 			case event := <-t.events:
-// 				t.lastSequence++
+func (t *PostgresTransactor) run(ctx context.Context) {
 
-// 				journalRow := fmt.Sprintf(
-// 					"%d\t%d\t%s\t%s\n",
-// 					t.lastSequence, event.EventType, event.Key, event.Value)
-
-// 				_, err := t.file.WriteString(journalRow)
-// 				if err != nil {
-// 					t.errors <- err
-// 				}
-// 			case <-t.done:
-// 				return
-// 			case <-ctx.Done():
-// 				return
-// 			}
-// 		}
-// 	}()
-// }
+}
 
 func (t *PostgresTransactor) ReadEvents() (<-chan Event, <-chan error) {
 	outEvent := make(chan Event)
