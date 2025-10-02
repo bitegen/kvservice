@@ -54,6 +54,7 @@ func (s *Store) Put(key string, value string) error {
 		return fmt.Errorf("failed to log put operation: %w", err)
 	}
 	return nil
+
 }
 
 func (s *Store) Delete(key string) error {

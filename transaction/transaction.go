@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 )
 
+var _ Transactor = &FileTransactor{}
+
 type FileTransactor struct {
 	events       chan Event
 	errors       chan error
