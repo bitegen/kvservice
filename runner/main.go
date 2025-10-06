@@ -1,55 +1,23 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"net/http"
-	"sync"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func main() {
-	const numGoroutines = 100_000
-	var wg sync.WaitGroup
+	c := make(chan os.Signal, 11)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
-	for i := 0; i < numGoroutines; i++ {
-		wg.Add(1)
-		go func(id int) {
-			defer wg.Done()
-			sendRequest(id)
-		}(i)
+	for {
+		select {
+		case <-c:
+			fmt.Println("Break the loop")
+			return
+		case <-time.After(1 * time.Second):
+		}
 	}
-
-	wg.Wait()
-	fmt.Println("All requests completed.")
-}
-
-func sendRequest(id int) {
-	url := fmt.Sprintf("http://localhost:8080/v1/key%d", id)
-
-	jsonBody := fmt.Sprintf(`value-%d`, id)
-
-	req, err := http.NewRequest("PUT", url, bytes.NewBufferString(jsonBody))
-	if err != nil {
-		fmt.Printf("Goroutine %d: error creating request: %v\n", id, err)
-		return
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("Goroutine %d: error sending request: %v\n", id, err)
-		return
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("Goroutine %d: error reading response: %v\n", id, err)
-		return
-	}
-
-	fmt.Printf("Goroutine %d: Status: %s, Response: %s\n", id, resp.Status, string(respBody))
 }

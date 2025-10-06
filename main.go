@@ -23,21 +23,25 @@ var (
 )
 
 func main() {
+	ctx := context.Background()
+
 	var (
 		yamlPathParsed = flag.String("config", defaultYAML, "path to the YAML configuration file")
 		envPathParsed  = flag.String("env", defaultEnv, "path to the .env file")
 	)
 	flag.Parse()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	cfg, err := config.LoadConfig(*envPathParsed, *yamlPathParsed)
 	if err != nil {
 		log.Fatalf("failed to get config: %v", err)
 	}
 
-	transactor, err := transaction.NewPostgresTransactor(ctx, cfg.Postgres)
+	// transactor, err := transaction.NewPostgresTransactor(ctx, cfg.Postgres)
+	// if err != nil {
+	// 	log.Fatalf("failed to create transaction logger: %s", err)
+	// }
+	// defer transactor.Close()
+	transactor, err := transaction.NewFileTransactor(ctx)
 	if err != nil {
 		log.Fatalf("failed to create transaction logger: %s", err)
 	}
@@ -68,7 +72,7 @@ func main() {
 
 	<-stop
 	log.Println("shutdown signal received")
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, shutdownCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer shutdownCancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("graceful shutdown failed: %v", err)

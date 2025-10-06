@@ -14,14 +14,14 @@ var (
 	ErrEmptyKey    = errors.New("key is empty")
 )
 
-type Store struct {
+type inMemoryStore struct {
 	m          map[string]string
 	transactor transaction.Transactor
 	sync.RWMutex
 }
 
-func NewStore(transactor transaction.Transactor) *Store {
-	st := &Store{
+func NewStore(transactor transaction.Transactor) *inMemoryStore {
+	st := &inMemoryStore{
 		m:          make(map[string]string),
 		transactor: transactor,
 	}
@@ -29,19 +29,20 @@ func NewStore(transactor transaction.Transactor) *Store {
 	if err := st.restoreState(); err != nil {
 		log.Fatal(err)
 	}
+	log.Println("state is restored")
 
 	return st
 }
 
 // helper to check if key is empty
-func (s *Store) isKeyValid(key string) error {
+func (s *inMemoryStore) isKeyValid(key string) error {
 	if key == "" {
 		return ErrEmptyKey
 	}
 	return nil
 }
 
-func (s *Store) Put(key string, value string) error {
+func (s *inMemoryStore) Put(ctx context.Context, key string, value string) error {
 	if err := s.isKeyValid(key); err != nil {
 		return err
 	}
@@ -57,7 +58,7 @@ func (s *Store) Put(key string, value string) error {
 
 }
 
-func (s *Store) Delete(key string) error {
+func (s *inMemoryStore) Delete(ctx context.Context, key string) error {
 	if err := s.isKeyValid(key); err != nil {
 		return err
 	}
@@ -72,7 +73,7 @@ func (s *Store) Delete(key string) error {
 	return nil
 }
 
-func (s *Store) Get(key string) (string, error) {
+func (s *inMemoryStore) Get(ctx context.Context, key string) (string, error) {
 	if err := s.isKeyValid(key); err != nil {
 		return "", err
 	}
@@ -88,7 +89,7 @@ func (s *Store) Get(key string) (string, error) {
 }
 
 // put data in lock
-func (s *Store) put(key string, value string) {
+func (s *inMemoryStore) put(key string, value string) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -96,17 +97,17 @@ func (s *Store) put(key string, value string) {
 }
 
 // delete data in lock
-func (s *Store) delete(key string) {
+func (s *inMemoryStore) delete(key string) {
 	s.Lock()
 	defer s.Unlock()
 
 	delete(s.m, key)
 }
 
-func (s *Store) restoreState() error {
+func (s *inMemoryStore) restoreState() error {
 	eventsCh, errCh := s.transactor.ReadEvents()
 	if eventsCh == nil || errCh == nil {
-		return nil
+		return transaction.ErrEmptyJournal
 	}
 
 	for event := range eventsCh {

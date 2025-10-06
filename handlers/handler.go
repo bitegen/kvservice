@@ -11,10 +11,10 @@ import (
 )
 
 type Handler struct {
-	store *core.Store
+	store core.Store
 }
 
-func NewHandler(store *core.Store) *Handler {
+func NewHandler(store core.Store) *Handler {
 	return &Handler{store: store}
 }
 
@@ -37,7 +37,7 @@ func (h *Handler) PutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.store.Put(key, string(value))
+	err = h.store.Put(r.Context(), key, string(value))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -50,7 +50,7 @@ func (h *Handler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["key"]
 
-	err := h.store.Delete(key)
+	err := h.store.Delete(r.Context(), key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -68,7 +68,7 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	value, err := h.store.Get(key)
+	value, err := h.store.Get(r.Context(), key)
 	if errors.Is(err, core.ErrKeyNotFound) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

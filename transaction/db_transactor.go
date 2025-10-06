@@ -6,6 +6,7 @@ import (
 	"cloud/utils"
 	"context"
 	"fmt"
+	"log"
 	"sync/atomic"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -43,6 +44,7 @@ func NewPostgresTransactor(ctx context.Context, cfg config.PostgresConfig) (*Pos
 		done:   make(chan struct{}),
 		pool:   pool,
 	}
+	t.run(ctx)
 
 	return t, nil
 }
@@ -58,11 +60,11 @@ func (t *PostgresTransactor) Close() error {
 }
 
 func (t *PostgresTransactor) WritePut(ctx context.Context, key, value string) error {
-	return t.send(ctx, Event{Key: key, Value: value})
+	return t.send(ctx, Event{Key: key, Value: value, EventType: EventPut})
 }
 
 func (t *PostgresTransactor) WriteDelete(ctx context.Context, key string) error {
-	return t.send(ctx, Event{Key: key})
+	return t.send(ctx, Event{Key: key, EventType: EventDelete})
 }
 
 func (t *PostgresTransactor) send(ctx context.Context, event Event) error {
@@ -81,13 +83,62 @@ func (t *PostgresTransactor) send(ctx context.Context, event Event) error {
 }
 
 func (t *PostgresTransactor) run(ctx context.Context) {
+	go func() {
+		query := `INSERT INTO transactions
+			(event_type, key, value)
+			VALUES ($1, $2, $3)`
 
+		for event := range t.events {
+			_, err := t.pool.Exec(
+				context.TODO(),
+				query,
+				event.EventType, event.Key, event.Value)
+
+			log.Println("store event: ", event)
+
+			if err != nil {
+				t.errors <- err
+			}
+		}
+	}()
 }
 
 func (t *PostgresTransactor) ReadEvents() (<-chan Event, <-chan error) {
 	outEvent := make(chan Event)
 	outError := make(chan error, 1)
-	close(outError)
-	close(outEvent)
+
+	query := "SELECT sequence, event_type, key, value FROM transactions"
+
+	go func() {
+		defer close(outEvent)
+		defer close(outError)
+
+		rows, err := t.pool.Query(context.TODO(), query)
+		if err != nil {
+			outError <- fmt.Errorf("sql query error: %w", err)
+			return
+		}
+		defer rows.Close()
+
+		var e Event
+
+		for rows.Next() {
+			err = rows.Scan(&e.Sequence, &e.EventType, &e.Key, &e.Value)
+			log.Println("get event: ", e)
+
+			if err != nil {
+				outError <- err
+				return
+			}
+
+			outEvent <- e
+		}
+
+		err = rows.Err()
+		if err != nil {
+			outError <- fmt.Errorf("transaction log read failure: %w", err)
+		}
+	}()
+
 	return outEvent, outError
 }
