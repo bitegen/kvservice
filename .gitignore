@@ -1,2 +1,11 @@
 tmp/
 tmp
+
+transactor.journal
+
+.env
+
+/secrets
+secrets
+
+/runner

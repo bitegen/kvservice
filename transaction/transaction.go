@@ -9,14 +9,7 @@ import (
 	"sync/atomic"
 )
 
-const filename = "kv_data"
-
-type Transactor interface {
-	WritePut(ctx context.Context, key, value string) error
-	WriteDelete(ctx context.Context, key string) error
-
-	Close() error
-}
+var _ Transactor = &FileTransactor{}
 
 type FileTransactor struct {
 	events       chan Event
@@ -27,7 +20,7 @@ type FileTransactor struct {
 	file         *os.File
 }
 
-func NewFileTransactor(ctx context.Context, filename string) (*FileTransactor, error) {
+func NewFileTransactor(ctx context.Context) (*FileTransactor, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0755)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open transaction log file: %w", err)
@@ -46,7 +39,7 @@ func NewFileTransactor(ctx context.Context, filename string) (*FileTransactor, e
 
 func (t *FileTransactor) Close() error {
 	if !atomic.CompareAndSwapUint32(&t.closed, 0, 1) {
-		return nil
+		return ErrTransactorClosed
 	}
 	close(t.done)
 
@@ -66,13 +59,15 @@ func (t *FileTransactor) WriteDelete(ctx context.Context, key string) error {
 
 func (t *FileTransactor) send(ctx context.Context, event Event) error {
 	if atomic.LoadUint32(&t.closed) == 1 {
-		return fmt.Errorf("FileTransactor is closed")
+		return ErrTransactorClosed
 	}
 
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	case t.events <- event:
+		return nil
+	default:
 		return nil
 	}
 }
@@ -101,7 +96,7 @@ func (t *FileTransactor) run(ctx context.Context) {
 	}()
 }
 
-func (t *FileTransactor) readEvents() (chan Event, chan error) {
+func (t *FileTransactor) ReadEvents() (<-chan Event, <-chan error) {
 	scanner := bufio.NewScanner(t.file)
 	outEvent := make(chan Event)
 	outError := make(chan error, 1)
@@ -111,6 +106,11 @@ func (t *FileTransactor) readEvents() (chan Event, chan error) {
 
 		defer close(outEvent)
 		defer close(outError)
+
+		if t.file == nil {
+			outError <- ErrEmptyJournal
+			return
+		}
 
 		for scanner.Scan() {
 			line := scanner.Text()

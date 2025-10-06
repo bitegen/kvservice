@@ -2,13 +2,17 @@ package core
 
 import (
 	"cloud/mocks"
+	"context"
 	"errors"
 	"testing"
 )
 
-var store = NewStore(&mocks.MockTransactor{})
-
 func TestPut(t *testing.T) {
+	var (
+		ctx   = context.Background()
+		store = NewStore(&mocks.MockTransactor{})
+	)
+
 	const key = "create-key-put"
 	const value = "create-value-put"
 
@@ -18,11 +22,11 @@ func TestPut(t *testing.T) {
 			t.Error("key/value already exists")
 		}
 
-		err := store.Put(key, value)
+		err := store.Put(ctx, key, value)
 		if err != nil {
 			t.Error(err)
 		}
-		defer delete(store.m, key)
+		defer store.delete(key)
 
 		val, contains := store.m[key]
 		if !contains {
@@ -35,14 +39,14 @@ func TestPut(t *testing.T) {
 	})
 
 	t.Run("Empty Key", func(t *testing.T) {
-		err := store.Put("", value)
+		err := store.Put(ctx, "", value)
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
 	})
 
 	t.Run("Empty Value", func(t *testing.T) {
-		err := store.Put(key, "")
+		err := store.Put(ctx, key, "")
 		if err != nil {
 			t.Error(err)
 		}
@@ -59,17 +63,22 @@ func TestPut(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
+	var (
+		ctx   = context.Background()
+		store = NewStore(&mocks.MockTransactor{})
+	)
+
 	const key = "create-key-get"
 	const value = "create-value-get"
 
 	t.Run("Successful Get", func(t *testing.T) {
-		err := store.Put(key, value)
+		err := store.Put(ctx, key, value)
 		if err != nil {
 			t.Error(err)
 		}
-		defer store.Delete(key)
+		defer store.Delete(ctx, key)
 
-		val, err := store.Get(key)
+		val, err := store.Get(ctx, key)
 		if err != nil {
 			t.Error(err)
 		}
@@ -80,14 +89,14 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("Key Not Found", func(t *testing.T) {
-		_, err := store.Get("non-existent-key")
+		_, err := store.Get(ctx, "non-existent-key")
 		if !errors.Is(err, ErrKeyNotFound) {
 			t.Errorf("expected error %v, got %v", ErrKeyNotFound, err)
 		}
 	})
 
 	t.Run("Empty Key", func(t *testing.T) {
-		_, err := store.Get("")
+		_, err := store.Get(ctx, "")
 		if !errors.Is(err, ErrEmptyKey) {
 			t.Errorf("expected error %v, got %v", ErrEmptyKey, err)
 		}
@@ -95,16 +104,21 @@ func TestGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	var (
+		ctx   = context.Background()
+		store = NewStore(&mocks.MockTransactor{})
+	)
+
 	const key = "create-key-delete"
 	const value = "create-value-delete"
 
 	t.Run("Successful Delete", func(t *testing.T) {
-		err := store.Put(key, value)
+		err := store.Put(ctx, key, value)
 		if err != nil {
 			t.Error(err)
 		}
 
-		err = store.Delete(key)
+		err = store.Delete(ctx, key)
 		if err != nil {
 			t.Error(err)
 		}
@@ -116,14 +130,14 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("Delete Non-Existent Key", func(t *testing.T) {
-		err := store.Delete("non-existent-key")
+		err := store.Delete(ctx, "non-existent-key")
 		if err != nil {
 			t.Error("expected no error, got:", err)
 		}
 	})
 
 	t.Run("Delete Empty Key", func(t *testing.T) {
-		err := store.Delete("")
+		err := store.Delete(ctx, "")
 		if !errors.Is(err, ErrEmptyKey) {
 			t.Errorf("expected error %v, got %v", ErrEmptyKey, err)
 		}

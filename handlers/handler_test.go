@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cloud/core"
 	"cloud/mocks"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -54,7 +55,7 @@ func TestPutHandler(t *testing.T) {
 		t.Errorf("handler got, %v want %v", status, http.StatusCreated)
 	}
 
-	if storedValue, err := store.Get(key); (err != nil) || storedValue != value {
+	if storedValue, err := store.Get(req.Context(), key); (err != nil) || storedValue != value {
 		t.Errorf("handler got, %v want %v", value, storedValue)
 	}
 }
@@ -65,7 +66,7 @@ func TestGetHandler(t *testing.T) {
 
 	key := "key1"
 	value := "value1"
-	store.Put(key, value)
+	store.Put(context.TODO(), key, value)
 
 	req, err := http.NewRequest("GET", "/v1/{key}", nil)
 	if err != nil {
