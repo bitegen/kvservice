@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -103,7 +104,11 @@ func loadYAML(yamlPath string) (PostgresConfig, ServerConfig, error) {
 	if err != nil {
 		return PostgresConfig{}, ServerConfig{}, fmt.Errorf("open yaml: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("failed to close file: %v", err)
+		}
+	}()
 
 	var raw Config
 	if err := yaml.NewDecoder(f).Decode(&raw); err != nil {

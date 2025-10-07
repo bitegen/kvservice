@@ -1,0 +1,26 @@
+version: "2"
+
+run:
+  timeout: 2m
+  tests: false        
+  skip-dirs:
+    - vendor
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - ineffassign
+    - copyloopvar
+    - dupl
+    - dupword
+    - bodyclose
+    - cyclop
+    - tagalign
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck

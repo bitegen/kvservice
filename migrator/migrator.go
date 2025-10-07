@@ -16,7 +16,9 @@ func RunMigrations(cfg config.PostgresConfig, dir string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	if err := goose.Up(db, dir); err != nil {
 		return err
