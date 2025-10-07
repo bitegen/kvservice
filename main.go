@@ -45,7 +45,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create transaction logger: %s", err)
 	}
-	defer transactor.Close()
+	defer func() {
+		if err := transactor.Close(); err != nil {
+			log.Fatalf("failed to close transactor: %v", err)
+		}
+	}()
 
 	store := core.NewStore(transactor)
 	handler := handlers.NewHandler(store)

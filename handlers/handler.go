@@ -19,7 +19,7 @@ func NewHandler(store core.Store) *Handler {
 }
 
 func (h *Handler) HelloGoHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Hello World!")
+	_, _ = fmt.Fprintln(w, "Hello World!")
 }
 
 func (h *Handler) PutHandler(w http.ResponseWriter, r *http.Request) {
@@ -75,5 +75,5 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(value))
+	_, _ = w.Write([]byte(value))
 }
