@@ -1,8 +1,8 @@
 package migrator
 
 import (
-	"cloud/config"
-	"cloud/utils"
+	"cloud/internal/config"
+	"cloud/internal/utils"
 	"database/sql"
 
 	_ "github.com/lib/pq"

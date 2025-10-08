@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"bytes"
-	"cloud/core"
-	"cloud/mocks"
+	"cloud/internal/core"
+	"cloud/internal/mocks"
 	"context"
 	"net/http"
 	"net/http/httptest"
