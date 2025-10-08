@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"cloud/config"
+	"cloud/internal/config"
 	"fmt"
 )
 

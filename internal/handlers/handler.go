@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"cloud/core"
+	"cloud/internal/core"
 	"errors"
 	"fmt"
 	"io"

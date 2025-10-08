@@ -1,7 +1,7 @@
 package core
 
 import (
-	"cloud/transaction"
+	"cloud/internal/transaction"
 	"context"
 	"errors"
 	"fmt"

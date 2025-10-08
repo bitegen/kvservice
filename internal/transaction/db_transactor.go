@@ -1,9 +1,9 @@
 package transaction
 
 import (
-	"cloud/config"
-	"cloud/migrator"
-	"cloud/utils"
+	"cloud/internal/config"
+	"cloud/internal/migrator"
+	"cloud/internal/utils"
 	"context"
 	"fmt"
 	"sync/atomic"

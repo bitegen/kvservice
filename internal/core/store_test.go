@@ -1,7 +1,7 @@
 package core
 
 import (
-	"cloud/mocks"
+	"cloud/internal/mocks"
 	"context"
 	"errors"
 	"testing"
