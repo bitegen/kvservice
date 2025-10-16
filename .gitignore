@@ -1,13 +1,15 @@
 # temp dirs
 tmp/
-tmp
 
 # text files
 transactor.journal
 
 # secrets and env files
-/secrets
-secrets
+secrets/
 .env
 
-/runner
+# local stress tester
+runner/
+
+vendor/
+bin/
