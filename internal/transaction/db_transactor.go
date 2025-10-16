@@ -92,8 +92,6 @@ func (t *PostgresTransactor) run(ctx context.Context) {
 				query,
 				event.EventType, event.Key, event.Value)
 
-			// log.Println("store event: ", event)
-
 			if err != nil {
 				t.errors <- err
 			}
@@ -122,7 +120,6 @@ func (t *PostgresTransactor) ReadEvents() (<-chan Event, <-chan error) {
 
 		for rows.Next() {
 			err = rows.Scan(&e.Sequence, &e.EventType, &e.Key, &e.Value)
-			// log.Println("get event: ", e)
 
 			if err != nil {
 				outError <- err

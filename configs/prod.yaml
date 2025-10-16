@@ -1,7 +1,7 @@
 env: prod
 
 postgres:
-  migrations_dir: "./migrations"
+  migrations_dir: "./internal/migrations"
   pool:
     max_conns: 8
     max_conn_lifetime: 2h

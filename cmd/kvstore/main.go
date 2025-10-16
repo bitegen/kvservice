@@ -4,16 +4,10 @@ import (
 	"cloud/internal/config"
 	"cloud/internal/core"
 	"cloud/internal/handlers"
+	"cloud/internal/server"
 	"cloud/internal/transaction"
 	"context"
 	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
-	"github.com/gorilla/mux"
 )
 
 func main() {
@@ -34,42 +28,8 @@ func main() {
 	store := core.NewStore(transactor)
 	handler := handlers.NewHandler(store)
 
-	r := mux.NewRouter()
-	r.HandleFunc("/", handler.HelloGoHandler)
-	r.HandleFunc("/v1/{key}", handler.PutHandler).Methods("PUT")
-	r.HandleFunc("/v1/{key}", handler.GetHandler).Methods("GET")
-	r.HandleFunc("/v1/{key}", handler.DeleteHandler).Methods("DELETE")
+	routes := server.NewRouter(handler)
 
-	log.Println("server is starting...")
-	srv := NewServer(cfg.HTTP)
-	srv.Handler = r
-
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		log.Printf("server is listening on %s", srv.Addr)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen error: %v", err)
-		}
-	}()
-
-	<-stop
-	log.Println("shutdown signal received")
-	shutdownCtx, shutdownCancel := context.WithTimeout(ctx, 10*time.Second)
-	defer shutdownCancel()
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("graceful shutdown failed: %v", err)
-	}
-	log.Println("server stopped gracefully")
-}
-
-func NewServer(cfg config.ServerConfig) *http.Server {
-	server := &http.Server{
-		Addr:         cfg.Addr,
-		ReadTimeout:  cfg.ReadTimeout,
-		WriteTimeout: cfg.WriteTimeout,
-		IdleTimeout:  cfg.IdleTimeout,
-	}
-	return server
+	srv := server.NewServer(cfg.HTTP, routes)
+	srv.Run(ctx)
 }
