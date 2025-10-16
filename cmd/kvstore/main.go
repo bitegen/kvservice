@@ -20,7 +20,8 @@ func main() {
 	ctx := context.Background()
 	cfg := config.MustLoad()
 
-	transactor, err := transaction.NewFileTransactor(ctx)
+	transactorFactory := transaction.NewTransactorFactory(cfg)
+	transactor, err := transactorFactory.Create(ctx, transaction.TransactorTypePostgres)
 	if err != nil {
 		log.Fatalf("failed to create transaction logger: %s", err)
 	}
