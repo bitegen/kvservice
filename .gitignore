@@ -10,6 +10,7 @@ secrets/
 
 # local stress tester
 runner/
+runner
 
 vendor/
 bin/
