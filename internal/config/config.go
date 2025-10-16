@@ -1,32 +1,26 @@
 package config
 
 import (
-	"fmt"
-	"log"
+	"flag"
 	"os"
-	"strings"
 	"time"
 
+	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"
-	"gopkg.in/yaml.v3"
-)
-
-const (
-	defaultEnvPath  = "../.env"
-	defaultYAMLPath = "../config.yaml"
 )
 
 type Config struct {
+	Env      string         `yaml:"env"`
 	Postgres PostgresConfig `yaml:"postgres"`
 	HTTP     ServerConfig   `yaml:"http"`
 }
 
 type PostgresConfig struct {
-	Host          string
-	Port          string
-	DbName        string
-	User          string
-	Password      string
+	Host          string `env:"POSTGRES_HOST"`
+	Port          string `env:"POSTGRES_PORT"`
+	DbName        string `env:"POSTGRES_DB"`
+	User          string `env:"POSTGRES_USER"`
+	Password      string `env:"POSTGRES_PASSWORD_FILE"`
 	Pool          PoolConfig
 	MigrationsDir string `yaml:"migrations_dir"`
 }
@@ -44,90 +38,75 @@ type ServerConfig struct {
 	IdleTimeout  time.Duration `yaml:"idle_timeout"`
 }
 
-func mustEnv(key string) (string, error) {
-	val, ok := os.LookupEnv(key)
-	if !ok || strings.TrimSpace(val) == "" {
-		return "", fmt.Errorf("env var %s is required", key)
+func MustLoad() *Config {
+	configPath := fetchConfigPath()
+	if configPath == "" {
+		panic("config path is empty")
 	}
-	return val, nil
+
+	return MustLoadPath(configPath)
 }
 
-func loadEnv(envPath string) (PostgresConfig, error) {
-	var nullCfg PostgresConfig
-	if envPath == "" {
-		envPath = defaultEnvPath
-	}
-	if err := godotenv.Load(envPath); err != nil {
-		return PostgresConfig{}, fmt.Errorf(".env not found: %w", err)
+func MustLoadPath(configPath string) *Config {
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		panic("config file does not exist: " + configPath)
 	}
 
-	host, err := mustEnv("POSTGRES_HOST")
-	if err != nil {
-		return nullCfg, err
-	}
-	port, err := mustEnv("POSTGRES_PORT")
-	if err != nil {
-		return nullCfg, err
-	}
-	db, err := mustEnv("POSTGRES_DB")
-	if err != nil {
-		return nullCfg, err
-	}
-	user, err := mustEnv("POSTGRES_USER")
-	if err != nil {
-		return nullCfg, err
-	}
-	pwFile, err := mustEnv("POSTGRES_PASSWORD_FILE")
-	if err != nil {
-		return nullCfg, err
-	}
-	pw, err := os.ReadFile(pwFile)
-	if err != nil {
-		return PostgresConfig{}, fmt.Errorf("read password file %s: %w", pwFile, err)
-	}
-	password := strings.TrimSpace(string(pw))
-	if password == "" {
-		return PostgresConfig{}, fmt.Errorf("password file %s is empty", pwFile)
+	var cfg Config
+
+	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
+		panic("cannot read config: " + err.Error())
 	}
 
-	return PostgresConfig{
-		Host: host, Port: port, DbName: db,
-		User: user, Password: password,
-	}, nil
+	if cfg.Env == "" {
+		panic("env var cannot be empty")
+	}
+
+	err := setEnvValues()
+	if err != nil {
+		panic(err)
+	}
+
+	loadPassword(&cfg)
+
+	err = cleanenv.ReadEnv(&cfg)
+	if err != nil {
+		panic("cannot read env vars: " + err.Error())
+	}
+
+	return &cfg
 }
 
-func loadYAML(yamlPath string) (PostgresConfig, ServerConfig, error) {
-	if yamlPath == "" {
-		yamlPath = defaultYAMLPath
+func loadPassword(cfg *Config) {
+	if cfg.Postgres.Password == "" {
+		panic("password is empty")
 	}
-	f, err := os.Open(yamlPath)
-	if err != nil {
-		return PostgresConfig{}, ServerConfig{}, fmt.Errorf("open yaml: %w", err)
-	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			log.Printf("failed to close file: %v", err)
-		}
-	}()
 
-	var raw Config
-	if err := yaml.NewDecoder(f).Decode(&raw); err != nil {
-		return PostgresConfig{}, ServerConfig{}, fmt.Errorf("decode yaml: %w", err)
+	data, err := os.ReadFile(cfg.Postgres.Password)
+	if err != nil {
+		panic("cannot read file with password")
 	}
-	return raw.Postgres, raw.HTTP, nil
+	cfg.Postgres.Password = string(data)
 }
 
-func LoadConfig(envPath, yamlPath string) (Config, error) {
-	pg, err := loadEnv(envPath)
-	if err != nil {
-		return Config{}, err
+func setEnvValues() error {
+	if err := godotenv.Load(); err != nil {
+		panic("cannot load local .env")
 	}
-	postgresCfg, httpCfg, err := loadYAML(yamlPath)
-	if err != nil {
-		return Config{}, err
-	}
-	pg.Pool = postgresCfg.Pool
-	pg.MigrationsDir = postgresCfg.MigrationsDir
 
-	return Config{Postgres: pg, HTTP: httpCfg}, nil
+	return nil
+}
+
+// Priority: flag > env > default
+func fetchConfigPath() string {
+	var res string
+
+	flag.StringVar(&res, "config", "", "path to config file")
+	flag.Parse()
+
+	if res == "" {
+		res = os.Getenv("CONFIG_PATH")
+	}
+
+	return res
 }

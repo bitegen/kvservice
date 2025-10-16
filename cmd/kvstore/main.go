@@ -6,7 +6,6 @@ import (
 	"cloud/internal/handlers"
 	"cloud/internal/transaction"
 	"context"
-	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -17,24 +16,9 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var (
-	defaultYAML = "./configs/config.yaml"
-	defaultEnv  = "./.env"
-)
-
-var (
-	yamlPathParsed = flag.String("config", defaultYAML, "path to the YAML configuration file")
-	envPathParsed  = flag.String("env", defaultEnv, "path to the .env file")
-)
-
 func main() {
-	flag.Parse()
 	ctx := context.Background()
-
-	cfg, err := config.LoadConfig(*envPathParsed, *yamlPathParsed)
-	if err != nil {
-		log.Fatalf("failed to get config: %v", err)
-	}
+	cfg := config.MustLoad()
 
 	transactor, err := transaction.NewFileTransactor(ctx)
 	if err != nil {
