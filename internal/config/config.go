@@ -67,12 +67,11 @@ func MustLoadPath(configPath string) *Config {
 		panic(err)
 	}
 
-	loadPassword(&cfg)
-
 	err = cleanenv.ReadEnv(&cfg)
 	if err != nil {
 		panic("cannot read env vars: " + err.Error())
 	}
+	loadPassword(&cfg)
 
 	return &cfg
 }
