@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -20,7 +19,7 @@ type PostgresConfig struct {
 	Port          string `env:"POSTGRES_PORT"`
 	DbName        string `env:"POSTGRES_DB"`
 	User          string `env:"POSTGRES_USER"`
-	Password      string `env:"POSTGRES_PASSWORD_FILE"`
+	Password      string `env:"POSTGRES_PASSWORD"`
 	Pool          PoolConfig
 	MigrationsDir string `yaml:"migrations_dir"`
 }
@@ -62,38 +61,12 @@ func MustLoadPath(configPath string) *Config {
 		panic("env var cannot be empty")
 	}
 
-	err := setEnvValues()
-	if err != nil {
-		panic(err)
-	}
-
-	err = cleanenv.ReadEnv(&cfg)
+	err := cleanenv.ReadEnv(&cfg)
 	if err != nil {
 		panic("cannot read env vars: " + err.Error())
 	}
-	loadPassword(&cfg)
 
 	return &cfg
-}
-
-func loadPassword(cfg *Config) {
-	if cfg.Postgres.Password == "" {
-		panic("password is empty")
-	}
-
-	data, err := os.ReadFile(cfg.Postgres.Password)
-	if err != nil {
-		panic("cannot read file with password")
-	}
-	cfg.Postgres.Password = string(data)
-}
-
-func setEnvValues() error {
-	if err := godotenv.Load(); err != nil {
-		panic("cannot load local .env")
-	}
-
-	return nil
 }
 
 // Priority: flag > env > default
