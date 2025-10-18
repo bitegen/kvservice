@@ -8,6 +8,10 @@ import (
 	"cloud/internal/transaction"
 	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func main() {
@@ -29,7 +33,22 @@ func main() {
 	handler := handlers.NewHandler(store)
 
 	routes := server.NewRouter(handler)
-
 	srv := server.NewServer(cfg.HTTP, routes)
-	srv.Run(ctx)
+	srv.Start()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case sig := <-quit:
+		log.Println(sig)
+	case err := <-srv.ErrChan():
+		log.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal(err)
+	}
 }

@@ -3,16 +3,13 @@ package server
 import (
 	"cloud/internal/config"
 	"context"
-	"log"
+	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 type HTTPServer struct {
-	*http.Server
+	srv   *http.Server
+	errCh chan error
 }
 
 func NewServer(cfg config.ServerConfig, routes http.Handler) *HTTPServer {
@@ -23,28 +20,24 @@ func NewServer(cfg config.ServerConfig, routes http.Handler) *HTTPServer {
 		IdleTimeout:  cfg.IdleTimeout,
 		Handler:      routes,
 	}
-	return &HTTPServer{server}
+	return &HTTPServer{
+		srv:   server,
+		errCh: make(chan error, 1),
+	}
 }
 
-func (s *HTTPServer) Run(ctx context.Context) {
-	log.Println("server is starting...")
-
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-
+func (s *HTTPServer) Start() {
 	go func() {
-		log.Printf("server is listening on %s", s.Addr)
-		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen error: %v", err)
+		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			s.errCh <- fmt.Errorf("listen error: %v", err)
 		}
 	}()
+}
 
-	<-stop
-	log.Println("shutdown signal received")
-	shutdownCtx, shutdownCancel := context.WithTimeout(ctx, 10*time.Second)
-	defer shutdownCancel()
-	if err := s.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("graceful shutdown failed: %v", err)
-	}
-	log.Println("server stopped gracefully")
+func (s *HTTPServer) Shutdown(ctx context.Context) error {
+	return s.srv.Shutdown(ctx)
+}
+
+func (s *HTTPServer) ErrChan() <-chan error {
+	return s.errCh
 }
