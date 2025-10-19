@@ -4,10 +4,11 @@ import (
 	"cloud/internal/config"
 	"cloud/internal/core"
 	"cloud/internal/handlers"
+	"cloud/internal/logger"
 	"cloud/internal/server"
 	"cloud/internal/transaction"
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,21 +17,29 @@ import (
 
 func main() {
 	ctx := context.Background()
+
 	cfg := config.MustLoad()
+	log := logger.NewLogger(cfg.Env)
 
 	transactorFactory := transaction.NewTransactorFactory(cfg)
 	transactor, err := transactorFactory.Create(ctx, transaction.TransactorTypePostgres)
 	if err != nil {
-		log.Fatalf("failed to create transaction logger: %s", err)
+		log.Error("failed to create transaction logger",
+			slog.Any("error", err))
+		os.Exit(1)
 	}
 	defer func() {
 		if err := transactor.Close(); err != nil {
-			log.Fatalf("failed to close transactor: %v", err)
+			log.Error("failed to close transactor", slog.Any("error", err))
 		}
 	}()
 
-	store := core.NewStore(transactor)
-	handler := handlers.NewHandler(store)
+	store, err := core.NewStore(transactor, log)
+	if err != nil {
+		log.Error("failed to create store", slog.Any("err", err))
+		os.Exit(1)
+	}
+	handler := handlers.NewHandler(store, log)
 
 	routes := server.NewRouter(handler)
 	srv := server.NewServer(cfg.HTTP, routes)
@@ -40,15 +49,17 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	select {
-	case sig := <-quit:
-		log.Println(sig)
+	case <-quit:
+		log.Info("got sycall to finish service")
 	case err := <-srv.ErrChan():
-		log.Fatal(err)
+		log.Error("got err from server", slog.Any("err", err))
+		os.Exit(1)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal(err)
+		log.Error("got err from server shutdown", slog.Any("err", err))
+		os.Exit(1)
 	}
 }
