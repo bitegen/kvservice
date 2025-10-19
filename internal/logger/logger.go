@@ -6,14 +6,12 @@ import (
 	"time"
 )
 
-type Env string
-
 const (
-	EnvLocal Env = "local"
-	EnvProd  Env = "prod"
+	EnvLocal string = "local"
+	EnvProd  string = "prod"
 )
 
-func NewLogger(env Env) *slog.Logger {
+func NewLogger(env string) *slog.Logger {
 	var handler slog.Handler
 
 	switch env {
