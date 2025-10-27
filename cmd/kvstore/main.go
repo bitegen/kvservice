@@ -41,7 +41,7 @@ func main() {
 	}
 	handler := handlers.NewHandler(store, log)
 
-	routes := server.NewRouter(handler)
+	routes := server.NewRouter(handler, log)
 	srv := server.NewServer(cfg.HTTP, routes)
 	srv.Start()
 

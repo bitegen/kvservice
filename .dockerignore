@@ -1,5 +1,8 @@
 .env
+.env*
+
 secrets
+secrets/
 
 bin
 bin/
