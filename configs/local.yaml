@@ -1,3 +1,5 @@
+env: local
+
 postgres:
   migrations_dir: "./migrations"
   pool:
@@ -6,7 +8,7 @@ postgres:
     connect_timeout: 5s
 
 http:
-  addr: "localhost:8080"
+  addr: ":8080"
   read_timeout: 10s
   write_timeout: 10s
   idle_timeout: 60s

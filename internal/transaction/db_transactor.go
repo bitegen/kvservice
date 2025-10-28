@@ -1,24 +1,22 @@
 package transaction
 
 import (
-	"cloud/config"
-	"cloud/migrator"
-	"cloud/utils"
+	"cloud/internal/config"
+	"cloud/internal/migrator"
+	"cloud/internal/utils"
 	"context"
 	"fmt"
-	"log"
 	"sync/atomic"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PostgresTransactor struct {
-	events       chan Event
-	errors       chan error
-	done         chan struct{}
-	lastSequence uint64
-	closed       uint32 // 0 if open, 1 if closed
-	pool         *pgxpool.Pool
+	events chan Event
+	errors chan error
+	done   chan struct{}
+	closed uint32 // 0 if open, 1 if closed
+	pool   *pgxpool.Pool
 }
 
 func NewPostgresTransactor(ctx context.Context, cfg config.PostgresConfig) (*PostgresTransactor, error) {
@@ -94,8 +92,6 @@ func (t *PostgresTransactor) run(ctx context.Context) {
 				query,
 				event.EventType, event.Key, event.Value)
 
-			log.Println("store event: ", event)
-
 			if err != nil {
 				t.errors <- err
 			}
@@ -124,7 +120,6 @@ func (t *PostgresTransactor) ReadEvents() (<-chan Event, <-chan error) {
 
 		for rows.Next() {
 			err = rows.Scan(&e.Sequence, &e.EventType, &e.Key, &e.Value)
-			log.Println("get event: ", e)
 
 			if err != nil {
 				outError <- err

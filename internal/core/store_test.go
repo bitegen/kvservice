@@ -1,16 +1,17 @@
 package core
 
 import (
-	"cloud/mocks"
+	"cloud/internal/mocks"
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 )
 
 func TestPut(t *testing.T) {
 	var (
-		ctx   = context.Background()
-		store = NewStore(&mocks.MockTransactor{})
+		ctx      = context.Background()
+		store, _ = NewStore(&mocks.MockTransactor{}, slog.Default())
 	)
 
 	const key = "create-key-put"
@@ -64,8 +65,8 @@ func TestPut(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	var (
-		ctx   = context.Background()
-		store = NewStore(&mocks.MockTransactor{})
+		ctx      = context.Background()
+		store, _ = NewStore(&mocks.MockTransactor{}, slog.Default())
 	)
 
 	const key = "create-key-get"
@@ -105,8 +106,8 @@ func TestGet(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	var (
-		ctx   = context.Background()
-		store = NewStore(&mocks.MockTransactor{})
+		ctx      = context.Background()
+		store, _ = NewStore(&mocks.MockTransactor{}, slog.Default())
 	)
 
 	const key = "create-key-delete"

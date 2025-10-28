@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"bytes"
-	"cloud/core"
-	"cloud/mocks"
+	"cloud/internal/core"
+	"cloud/internal/mocks"
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,8 +14,8 @@ import (
 )
 
 func TestHelloGoHandler(t *testing.T) {
-	store := core.NewStore(&mocks.MockTransactor{})
-	handler := NewHandler(store)
+	store, _ := core.NewStore(&mocks.MockTransactor{}, slog.Default())
+	handler := NewHandler(store, slog.Default())
 
 	req, err := http.NewRequest("GET", "/", nil)
 	if err != nil {
@@ -35,8 +36,8 @@ func TestHelloGoHandler(t *testing.T) {
 }
 
 func TestPutHandler(t *testing.T) {
-	store := core.NewStore(&mocks.MockTransactor{})
-	handler := NewHandler(store)
+	store, _ := core.NewStore(&mocks.MockTransactor{}, slog.Default())
+	handler := NewHandler(store, slog.Default())
 
 	key := "key1"
 	value := "value1"
@@ -61,8 +62,8 @@ func TestPutHandler(t *testing.T) {
 }
 
 func TestGetHandler(t *testing.T) {
-	store := core.NewStore(&mocks.MockTransactor{})
-	handler := NewHandler(store)
+	store, _ := core.NewStore(&mocks.MockTransactor{}, slog.Default())
+	handler := NewHandler(store, slog.Default())
 
 	key := "key1"
 	value := "value1"

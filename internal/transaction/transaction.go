@@ -115,7 +115,7 @@ func (t *FileTransactor) ReadEvents() (<-chan Event, <-chan error) {
 		for scanner.Scan() {
 			line := scanner.Text()
 
-			fmt.Sscanf(
+			_, _ = fmt.Sscanf(
 				line, "%d\t%d\t%s\t%s",
 				&e.Sequence, &e.EventType, &e.Key, &e.Value)
 

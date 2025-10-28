@@ -1,7 +1,7 @@
 package mocks
 
 import (
-	"cloud/transaction"
+	"cloud/internal/transaction"
 	"context"
 )
 
