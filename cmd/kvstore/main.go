@@ -40,25 +40,23 @@ func main() {
 	}
 	handler := handlers.NewHandler(store, log)
 
-	routes := server.NewRouter(handler, log)
-	srv := server.NewServer(cfg.HTTP, routes)
-	srv.Start()
-
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	routes := server.NewRouter(handler, log)
+	srv := server.NewServer(cfg.HTTP, log, routes)
+	srv.Start()
 
 	select {
 	case <-quit:
 		log.Info("got sycall to finish service")
 	case err := <-srv.ErrChan():
 		log.Error("got err from server", slog.Any("err", err))
-		os.Exit(1)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Stop(ctx); err != nil {
 		log.Error("got err from server shutdown", slog.Any("err", err))
-		os.Exit(1)
 	}
 }

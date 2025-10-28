@@ -4,15 +4,18 @@ import (
 	"cloud/internal/config"
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 )
 
 type HTTPServer struct {
-	srv   *http.Server
-	errCh chan error
+	srv       *http.Server
+	logger    *slog.Logger
+	errCh     chan error
+	isRunning bool
 }
 
-func NewServer(cfg config.ServerConfig, routes http.Handler) *HTTPServer {
+func NewServer(cfg config.ServerConfig, logger *slog.Logger, routes http.Handler) *HTTPServer {
 	server := &http.Server{
 		Addr:         cfg.Addr,
 		ReadTimeout:  cfg.ReadTimeout,
@@ -21,21 +24,40 @@ func NewServer(cfg config.ServerConfig, routes http.Handler) *HTTPServer {
 		Handler:      routes,
 	}
 	return &HTTPServer{
-		srv:   server,
-		errCh: make(chan error, 1),
+		srv:    server,
+		logger: logger,
+		errCh:  make(chan error, 1),
 	}
 }
 
-func (s *HTTPServer) Start() {
+func (s *HTTPServer) Start() error {
+	if s.isRunning {
+		return fmt.Errorf("server is already running")
+	}
+
+	s.isRunning = true
 	go func() {
-		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := s.srv.ListenAndServe(); err != nil {
 			s.errCh <- fmt.Errorf("listen error: %v", err)
 		}
 	}()
+
+	s.logger.Info("http server started", "addr", s.srv.Addr)
+	return nil
 }
 
-func (s *HTTPServer) Shutdown(ctx context.Context) error {
-	return s.srv.Shutdown(ctx)
+func (s *HTTPServer) Stop(ctx context.Context) error {
+	if !s.isRunning {
+		return nil
+	}
+
+	s.isRunning = false
+	if err := s.srv.Shutdown(ctx); err != nil {
+		return fmt.Errorf("shutdown error: %v", err)
+	}
+
+	s.logger.Info("http server stopped")
+	return nil
 }
 
 func (s *HTTPServer) ErrChan() <-chan error {
