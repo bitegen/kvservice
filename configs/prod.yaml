@@ -8,7 +8,7 @@ postgres:
     connect_timeout: 25s
 
 http:
-  addr: "localhost:8080"
+  addr: ":8080"
   read_timeout: 10s
   write_timeout: 10s
   idle_timeout: 60s
