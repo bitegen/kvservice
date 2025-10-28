@@ -29,8 +29,7 @@ func NewStore(transactor transaction.Transactor, logger *slog.Logger) (*inMemory
 	}
 
 	if err := st.restoreState(); err != nil {
-		st.log.Error("failed to restore state",
-			slog.Any("err", err))
+		st.log.Error("failed to restore state", slog.Any("err", err))
 		return nil, err
 	}
 	st.log.Debug("state is restored succesfull")

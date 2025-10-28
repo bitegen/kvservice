@@ -4,10 +4,17 @@ WORKDIR /app
 
 COPY . .
 
-RUN go build -o ./bin/kvapp ./cmd/kvstore/main.go
+RUN CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    go build -ldflags="-s -w" -o ./bin/kvapp ./cmd/kvstore/main.go
 
 FROM alpine:latest
 
-COPY --from=builder /bin/kvapp /bin/kvapp 
+WORKDIR /app
+
+COPY --from=builder /app/bin/kvapp ./bin/kvapp
+COPY --from=builder /app/configs ./configs
+COPY --from=builder /app/migrations ./migrations
 
 CMD ["./bin/kvapp"]

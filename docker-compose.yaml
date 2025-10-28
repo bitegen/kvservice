@@ -12,7 +12,7 @@ services:
       POSTGRES_HOST: kvservice-db
       CONFIG_PATH: ${CONFIG_PATH}
     ports:
-      - "8080:8080"
+      - "8081:8080"
     depends_on:
       kvservice-db:
         condition: service_healthy
@@ -29,7 +29,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
       interval: 10s

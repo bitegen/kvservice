@@ -24,8 +24,7 @@ func main() {
 	transactorFactory := transaction.NewTransactorFactory(cfg)
 	transactor, err := transactorFactory.Create(ctx, transaction.TransactorTypePostgres)
 	if err != nil {
-		log.Error("failed to create transaction logger",
-			slog.Any("error", err))
+		log.Error("failed to create transaction logger", slog.Any("error", err))
 		os.Exit(1)
 	}
 	defer func() {
