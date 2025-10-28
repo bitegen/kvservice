@@ -30,12 +30,7 @@ func NewServer(cfg config.ServerConfig, logger *slog.Logger, routes http.Handler
 	}
 }
 
-func (s *HTTPServer) Start() error {
-	if s.isRunning {
-		return fmt.Errorf("server is already running")
-	}
-
-	s.isRunning = true
+func (s *HTTPServer) Start() {
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil {
 			s.errCh <- fmt.Errorf("listen error: %v", err)
@@ -43,7 +38,6 @@ func (s *HTTPServer) Start() error {
 	}()
 
 	s.logger.Info("http server started", "addr", s.srv.Addr)
-	return nil
 }
 
 func (s *HTTPServer) Stop(ctx context.Context) error {
