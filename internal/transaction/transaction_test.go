@@ -82,7 +82,7 @@ func TestConcurrentWritesAndRead(t *testing.T) {
 		if err := transactor1.Close(); err != nil {
 			t.Fatalf("close error: %v", err)
 		}
-		if transactor.file != nil {
+		if transactor1.file != nil {
 			os.Remove(transactor.file.Name())
 		}
 	}()
