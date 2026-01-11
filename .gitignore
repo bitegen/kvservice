@@ -7,7 +7,6 @@ transactor.journal
 # secrets and env files
 secrets/
 .env
-.env*
 
 # local stress tester
 runner/

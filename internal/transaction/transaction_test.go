@@ -45,7 +45,6 @@ func TestConcurrentWritesAndRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create transactor: %v", err)
 	}
-
 	defer func() {
 		if err := transactor.Close(); err != nil {
 			t.Fatalf("close error: %v", err)
@@ -73,6 +72,10 @@ func TestConcurrentWritesAndRead(t *testing.T) {
 	}
 	wg.Wait()
 
+	if err := transactor.file.Sync(); err != nil {
+		t.Fatalf("failed to sync data with storage: %v", err)
+	}
+
 	transactor1, err := NewFileTransactor(ctx)
 	if err != nil {
 		t.Fatalf("failed to create transactor1: %v", err)
@@ -82,7 +85,7 @@ func TestConcurrentWritesAndRead(t *testing.T) {
 		if err := transactor1.Close(); err != nil {
 			t.Fatalf("close error: %v", err)
 		}
-		if transactor.file != nil {
+		if transactor1.file != nil {
 			os.Remove(transactor.file.Name())
 		}
 	}()
